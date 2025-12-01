@@ -4,9 +4,9 @@ import requests
 from io import BytesIO
 from docx import Document
 app = Flask(__name__)
-CORS(app)
+CORS(app, resources={r"/*": {"origins": "*"}})
 
-N8N_WEBHOOK_URL = "https://tjans.app.n8n.cloud/webhook-test/file-processing"
+N8N_WEBHOOK_URL = "https://tjans.app.n8n.cloud/webhook/file-processing"
 
 @app.route('/api/upload', methods=['POST'])
 def upload_file():

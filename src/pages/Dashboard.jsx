@@ -166,13 +166,14 @@ const Dashboard = () => {
   const [fileList, setFileList] = useState([]);
   const [proposals, setProposals] = useState([]);
   const [loading, setLoading] = useState(false);
+
   const API_URL = import.meta.env.VITE_API_URL;
 
   const handleUpload = async ({ file, onSuccess, onError }) => {
     setLoading(true);
     const formData = new FormData();
     formData.append("file", file);
-
+    console.log(API_URL);
     try {
       const res = await fetch(`${API_URL}/api/upload`, {
         method: "POST",
