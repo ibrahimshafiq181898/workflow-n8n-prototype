@@ -167,25 +167,33 @@ const Dashboard = () => {
   const [proposals, setProposals] = useState([]);
   const [loading, setLoading] = useState(false);
   const api = import.meta.env.VITE_API_URL;
-  const handleUpload = async ({ file, onSuccess, onError }) => {
-    const formData = new FormData();
-    formData.append("file", file);
+ const handleUpload = async ({ file, onSuccess, onError }) => {
+  // Start loader
+  setLoading(true);
 
-    try {
-      fetch(`${api}/api/upload`, {
-        method: "POST",
-        body: formData
-      });
+  const formData = new FormData();
+  formData.append("file", file);
 
-      // No waiting for the result
-      message.success(`${file.name} uploaded. Workflow started.`);
-      onSuccess("ok");
-    } catch (err) {
-      console.error("UPLOAD ERROR:", err);
-      message.error(`${file.name} upload failed.`);
-      onError(err);
-    }
-  };
+  try {
+    fetch(`${api}/api/upload`, {
+      method: "POST",
+      body: formData
+    });
+
+    message.success(`${file.name} uploaded. Workflow started.`);
+    onSuccess("ok");
+  } catch (err) {
+    console.error("UPLOAD ERROR:", err);
+    message.error(`${file.name} upload failed.`);
+    onError(err);
+  } finally {
+    // Keep loader for 20–25 seconds
+    setTimeout(() => {
+      setLoading(false);
+    }, 23000); // 23 seconds (you can set 20000–25000)
+  }
+};
+
 
   return (
     <>
