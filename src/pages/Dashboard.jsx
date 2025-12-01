@@ -10,43 +10,158 @@ import {
   DeleteOutlined
 } from "@ant-design/icons";
 import { message, Upload, Button, List, Card, Spin, Typography } from "antd";
-
+import ReactMarkdown from "react-markdown";
 const { Dragger } = Upload;
-const { Title, Paragraph } = Typography;
+import { saveAs } from "file-saver";
+import {
+  Document,
+  Packer,
+  Paragraph as DocxParagraph,
+  HeadingLevel,
+  TextRun
+} from "docx";
 
-// 🔥 UPDATED COMPONENT: Now includes "Download Word File" button
-const ProcessedOutput = ({ proposals }) =>
-  proposals?.length ? (
-    <Card
-      title="Workflow Output"
+const { Title, Paragraph: AntParagraph } = Typography;
+
+const ProcessedOutput = ({ proposals }) => {
+  if (!proposals?.length) return null;
+
+  const downloadWordFile = async () => {
+    const docChildren = [];
+
+    proposals.forEach((p, index) => {
+      docChildren.push(
+        new DocxParagraph({
+          text: `Proposal ${index + 1}`,
+          heading: HeadingLevel.HEADING_2,
+          spacing: { after: 200 }
+        })
+      );
+
+      const lines = p.text.split("\n");
+
+      lines.forEach((line) => {
+        // Handle # Headings
+        if (line.startsWith("### ")) {
+          docChildren.push(
+            new DocxParagraph({
+              text: line.replace("### ", ""),
+              heading: HeadingLevel.HEADING_3,
+              spacing: { after: 120 }
+            })
+          );
+        } else if (line.startsWith("## ")) {
+          docChildren.push(
+            new DocxParagraph({
+              text: line.replace("## ", ""),
+              heading: HeadingLevel.HEADING_2,
+              spacing: { after: 150 }
+            })
+          );
+        } else if (line.startsWith("# ")) {
+          docChildren.push(
+            new DocxParagraph({
+              text: line.replace("# ", ""),
+              heading: HeadingLevel.HEADING_1,
+              spacing: { after: 200 }
+            })
+          );
+        }
+
+        // Handle bullet lists
+        else if (line.startsWith("- ") || line.startsWith("* ")) {
+          docChildren.push(
+            new DocxParagraph({
+              text: line.substring(2),
+              bullet: { level: 0 },
+              spacing: { after: 80 }
+            })
+          );
+        }
+
+        // Blank line
+        else if (line.trim() === "") {
+          docChildren.push(new DocxParagraph(""));
+        }
+
+        // Normal paragraph
+        else {
+          docChildren.push(
+            new DocxParagraph({
+              children: [new TextRun(line)],
+              spacing: { after: 120 }
+            })
+          );
+        }
+      });
+
+      // Extra space after each proposal
+      docChildren.push(new DocxParagraph(""));
+    });
+
+    const doc = new Document({
+      sections: [{ children: docChildren }]
+    });
+
+    const blob = await Packer.toBlob(doc);
+    saveAs(blob, "workflow_output.docx");
+  };
+
+  return (
+    <div
       style={{
-        borderRadius: 12,
-        boxShadow: "0 4px 14px rgba(0,0,0,0.1)",
-        marginTop: 24
+        maxWidth: "900px",
+        margin: "40px auto"
       }}
     >
-      {proposals.map((p, i) => (
-        <div key={i} style={{ marginBottom: 32 }}>
-          <Title level={4}>Proposal {i + 1}</Title>
+      <Card
+        title="Workflow Output"
+        extra={
+          <Button type="primary" onClick={downloadWordFile}>
+            Download Word File
+          </Button>
+        }
+        style={{
+          borderRadius: 12,
+          boxShadow: "0 4px 14px rgba(0,0,0,0.1)",
+          padding: "20px"
+        }}
+      >
+        {proposals.map((p, i) => (
+          <div key={i} style={{ marginBottom: 32 }}>
+            <Title level={4}>Proposal {i + 1}</Title>
 
-          <Paragraph style={{ whiteSpace: "pre-wrap" }}>{p.text}</Paragraph>
-
-          {/* Word file download button */}
-          {p.word_file_url && (
-            <Button
-              type="primary"
-              style={{ marginTop: 12 }}
-              href={p.word_file_url}
-              download
+            <ReactMarkdown
+              components={{
+                h1: ({ node, ...props }) => <Title level={1} {...props} />,
+                h2: ({ node, ...props }) => <Title level={2} {...props} />,
+                h3: ({ node, ...props }) => <Title level={3} {...props} />,
+                p: ({ node, ...props }) => (
+                  <AntParagraph
+                    style={{ fontSize: "16px", lineHeight: "1.7" }}
+                    {...props}
+                  />
+                ),
+                li: ({ node, ...props }) => (
+                  <li
+                    style={{ marginBottom: 6, fontSize: "16px" }}
+                    {...props}
+                  />
+                )
+              }}
             >
-              Download Word File
-            </Button>
-          )}
-        </div>
-      ))}
-    </Card>
-  ) : null;
+              {p.text}
+            </ReactMarkdown>
+          </div>
+        ))}
+      </Card>
+    </div>
+  );
+};
 
+// =========================
+// Main Component
+// =========================
 const Dashboard = () => {
   const [fileList, setFileList] = useState([]);
   const [proposals, setProposals] = useState([]);
@@ -66,9 +181,17 @@ const Dashboard = () => {
       if (!res.ok) throw new Error("Processing failed");
 
       const data = await res.json();
+      console.log("RAW RESPONSE FROM BACKEND:", data);
 
-      // 🔥 Updated: Now reading proposals + file download URLs
-      setProposals(data.proposals || data);
+      // n8n sends an array → unwrap first item
+      const output = Array.isArray(data) ? data[0] : data;
+
+      // FIXED: read proposals from backend
+      const cleaned = Array.isArray(output.proposals) ? output.proposals : [];
+
+      console.log("FINAL CLEANED PROPOSALS:", cleaned);
+
+      setProposals(cleaned);
 
       message.success(`${file.name} processed successfully.`);
       onSuccess("ok");
