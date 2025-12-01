@@ -169,38 +169,24 @@ const Dashboard = () => {
   const api = import.meta.env.VITE_API_URL;
   const handleUpload = async ({ file, onSuccess, onError }) => {
     setLoading(true);
+
     const formData = new FormData();
     formData.append("file", file);
 
     try {
-      const res = await fetch(
-        "https://mybackend-ruty.onrender.com/api/upload",
-        {
-          method: "POST",
-          body: formData
-        }
-      );
+      const res = await fetch(`${api}/api/upload`, {
+        method: "POST",
+        body: formData
+      });
 
-      if (!res.ok) throw new Error("Processing failed");
+      if (!res.ok) throw new Error("Upload failed");
 
-      const data = await res.json();
-      console.log("RAW RESPONSE FROM BACKEND:", data);
-
-      // n8n sends an array → unwrap first item
-      const output = Array.isArray(data) ? data[0] : data;
-
-      // FIXED: read proposals from backend
-      const cleaned = Array.isArray(output.proposals) ? output.proposals : [];
-
-      console.log("FINAL CLEANED PROPOSALS:", cleaned);
-
-      setProposals(cleaned);
-
-      message.success(`${file.name} processed successfully.`);
+      // We don't care what n8n returns anymore
+      message.success(`${file.name} uploaded successfully. Workflow started.`);
       onSuccess("ok");
     } catch (err) {
-      console.error(err);
-      message.error(`${file.name} processing failed.`);
+      console.error("UPLOAD ERROR:", err);
+      message.error(`${file.name} upload failed.`);
       onError(err);
     } finally {
       setLoading(false);

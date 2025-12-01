@@ -9,7 +9,32 @@ CORS(app, resources={r"/*": {"origins": "*"}})
 N8N_WEBHOOK_URL = "https://tjans.app.n8n.cloud/webhook/file-processing"
 
 @app.route('/api/upload', methods=['POST'])
+@app.route('/api/upload', methods=['POST'])
 def upload_file():
+    if 'file' not in request.files:
+        return jsonify({"error": "No file part"}), 400
+
+    file = request.files['file']
+    if file.filename == '':
+        return jsonify({"error": "No selected file"}), 400
+
+    files = {'file': (file.filename, file.stream, file.content_type)}
+
+    response = requests.post(N8N_WEBHOOK_URL, files=files)
+
+    # FIXED handling
+    if response.ok:
+        try:
+            return jsonify(response.json())
+        except Exception:
+            return response.text, 200
+
+    return jsonify({
+        "error": "n8n workflow failed",
+        "status_code": response.status_code,
+        "response_text": response.text
+    }), 500
+
     if 'file' not in request.files:
         return jsonify({"error": "No file part"}), 400
 
