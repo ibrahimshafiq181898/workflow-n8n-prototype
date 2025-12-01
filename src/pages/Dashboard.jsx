@@ -168,28 +168,22 @@ const Dashboard = () => {
   const [loading, setLoading] = useState(false);
   const api = import.meta.env.VITE_API_URL;
   const handleUpload = async ({ file, onSuccess, onError }) => {
-    setLoading(true);
-
     const formData = new FormData();
     formData.append("file", file);
 
     try {
-      const res = await fetch(`${api}/api/upload`, {
+      fetch(`${api}/api/upload`, {
         method: "POST",
         body: formData
       });
 
-      if (!res.ok) throw new Error("Upload failed");
-
-      // We don't care what n8n returns anymore
-      message.success(`${file.name} uploaded successfully. Workflow started.`);
+      // No waiting for the result
+      message.success(`${file.name} uploaded. Workflow started.`);
       onSuccess("ok");
     } catch (err) {
       console.error("UPLOAD ERROR:", err);
       message.error(`${file.name} upload failed.`);
       onError(err);
-    } finally {
-      setLoading(false);
     }
   };
 
